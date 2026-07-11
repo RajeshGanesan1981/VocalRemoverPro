@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -13,7 +14,7 @@ class AudioProcessor:
         output_folder.mkdir(parents=True, exist_ok=True)
 
         command = [
-            "python",
+            sys.executable,
             "-m",
             "demucs",
             "--two-stems=vocals",
