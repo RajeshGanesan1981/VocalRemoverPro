@@ -6,7 +6,6 @@ from App.window import MainWindow
 
 
 def main():
-
     app = QApplication(sys.argv)
 
     window = MainWindow()

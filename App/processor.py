@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -6,48 +7,49 @@ class AudioProcessor:
 
     def process(self, input_file, output_folder):
 
+        input_file = Path(input_file)
+        output_folder = Path(output_folder)
+
+        output_folder.mkdir(parents=True, exist_ok=True)
+
         command = [
             "python",
             "-m",
             "demucs",
             "--two-stems=vocals",
-            "-n",
-            "htdemucs",
             "-o",
-            output_folder,
-            input_file,
+            str(output_folder),
+            str(input_file),
         ]
 
         result = subprocess.run(
             command,
             capture_output=True,
-            text=True
+            text=True,
         )
 
         if result.returncode != 0:
             raise Exception(result.stderr)
 
-        output_path = (
-            Path(output_folder)
+        demucs_folder = (
+            output_folder
             / "htdemucs"
-            / Path(input_file).stem
+            / input_file.stem
         )
 
-        vocals = output_path / "vocals.wav"
-        instrumental = output_path / "no_vocals.wav"
+        vocals = demucs_folder / "vocals.wav"
+        no_vocals = demucs_folder / "no_vocals.wav"
 
-        if not vocals.exists():
-            raise Exception("vocals.wav was not created.")
+        final_vocals = output_folder / "vocals.wav"
+        final_instrumental = output_folder / "instrumental.wav"
 
-        if not instrumental.exists():
-            raise Exception("no_vocals.wav was not created.")
+        if vocals.exists():
+            shutil.copy2(vocals, final_vocals)
 
-        song_name = Path(input_file).stem
+        if no_vocals.exists():
+            shutil.copy2(no_vocals, final_instrumental)
 
-        new_vocals = output_path / f"{song_name} - Vocals.wav"
-        new_instrumental = output_path / f"{song_name} - Instrumental.wav"
-
-        vocals.rename(new_vocals)
-        instrumental.rename(new_instrumental)
-
-        return str(new_vocals), str(new_instrumental)
+        return (
+            str(final_vocals),
+            str(final_instrumental),
+        )

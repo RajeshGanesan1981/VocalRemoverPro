@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
 )
 
-from widgets import DropArea
-from worker import Worker
+from App.widgets import DropArea
+from App.worker import Worker
 
 
 class MainWindow(QWidget):
@@ -25,6 +25,7 @@ class MainWindow(QWidget):
         super().__init__()
 
         self.audio_file = None
+
         self.worker = None
         self.thread = None
 
@@ -46,7 +47,6 @@ class MainWindow(QWidget):
 
         title = QLabel("🎵 Vocal Remover Pro")
         title.setAlignment(Qt.AlignCenter)
-
         title.setStyleSheet("""
             font-size:28px;
             font-weight:bold;
@@ -61,26 +61,33 @@ class MainWindow(QWidget):
         self.browse_audio_btn = QPushButton("Browse Audio File")
         self.browse_audio_btn.setFixedHeight(40)
         self.browse_audio_btn.clicked.connect(self.open_audio)
-
         layout.addWidget(self.browse_audio_btn)
 
         folder_layout = QHBoxLayout()
 
         self.output_edit = QLineEdit()
-        self.output_edit.setPlaceholderText("Select Output Folder")
+        self.output_edit.setPlaceholderText(
+            "Select Output Folder"
+        )
 
         self.folder_btn = QPushButton("Browse")
-        self.folder_btn.clicked.connect(self.choose_folder)
+        self.folder_btn.clicked.connect(
+            self.choose_folder
+        )
 
         folder_layout.addWidget(self.output_edit)
         folder_layout.addWidget(self.folder_btn)
 
         layout.addLayout(folder_layout)
 
-        self.start_btn = QPushButton("Start Processing")
+        self.start_btn = QPushButton(
+            "Start Processing"
+        )
         self.start_btn.setFixedHeight(45)
         self.start_btn.setEnabled(False)
-        self.start_btn.clicked.connect(self.start_processing)
+        self.start_btn.clicked.connect(
+            self.start_processing
+        )
 
         layout.addWidget(self.start_btn)
 
@@ -90,10 +97,14 @@ class MainWindow(QWidget):
 
         layout.addWidget(self.progress)
 
-        self.open_folder_btn = QPushButton("📂 Open Output Folder")
+        self.open_folder_btn = QPushButton(
+            "📂 Open Output Folder"
+        )
         self.open_folder_btn.setFixedHeight(40)
         self.open_folder_btn.setEnabled(False)
-        self.open_folder_btn.clicked.connect(self.open_output_folder)
+        self.open_folder_btn.clicked.connect(
+            self.open_output_folder
+        )
 
         layout.addWidget(self.open_folder_btn)
 
@@ -101,13 +112,109 @@ class MainWindow(QWidget):
         layout.addWidget(self.status)
 
         self.setLayout(layout)
-                self.setLayout(layout)
+
+    def audio_selected(self, filename):
+
+        self.audio_file = filename
+
+        self.drop_area.setText(
+            "✅ Selected\n\n"
+            f"{Path(filename).name}"
+        )
+
+        if self.output_edit.text():
+            self.start_btn.setEnabled(True)
 
     def open_audio(self):
 
         filename, _ = QFileDialog.getOpenFileName(
-            ...
-        def processing_finished(self, vocals, instrumental):
+            self,
+            "Select Audio File",
+            "",
+            "Audio Files (*.mp3 *.wav *.flac *.m4a *.aac *.ogg)"
+        )
+
+        if filename:
+            self.audio_selected(filename)
+
+    def choose_folder(self):
+
+        folder = QFileDialog.getExistingDirectory(
+            self,
+            "Select Output Folder"
+        )
+
+        if folder:
+
+            self.output_edit.setText(folder)
+
+            if self.audio_file:
+                self.start_btn.setEnabled(True)
+
+    def start_processing(self):
+
+        if not self.audio_file:
+
+            QMessageBox.warning(
+                self,
+                "No Audio",
+                "Please select an audio file."
+            )
+            return
+
+        if not self.output_edit.text():
+
+            QMessageBox.warning(
+                self,
+                "No Output Folder",
+                "Please choose an output folder."
+            )
+            return
+
+        self.start_btn.setEnabled(False)
+        self.browse_audio_btn.setEnabled(False)
+        self.folder_btn.setEnabled(False)
+        self.open_folder_btn.setEnabled(False)
+
+        self.progress.setRange(0, 0)
+        self.status.setText("Processing...")
+
+        self.thread = QThread()
+
+        self.worker = Worker(
+            self.audio_file,
+            self.output_edit.text()
+        )
+
+        self.worker.moveToThread(self.thread)
+
+        self.thread.started.connect(
+            self.worker.run
+        )
+
+        self.worker.finished.connect(
+            self.processing_finished
+        )
+
+        self.worker.error.connect(
+            self.processing_error
+        )
+
+        self.worker.finished.connect(
+            self.thread.quit
+        )
+
+        self.worker.error.connect(
+            self.thread.quit
+        )
+
+        self.thread.finished.connect(
+            self.thread.deleteLater
+        )
+
+        self.thread.start()
+        
+    def processing_finished(self, vocals, instrumental):
 
         self.last_vocals = vocals
         self.last_instrumental = instrumental
@@ -130,8 +237,10 @@ class MainWindow(QWidget):
             "The output files have been saved."
         )
 
-        self.worker.deleteLater()
-        self.worker = None
+        if self.worker is not None:
+            self.worker.deleteLater()
+            self.worker = None
+
         self.thread = None
 
     def processing_error(self, message):
@@ -151,8 +260,10 @@ class MainWindow(QWidget):
             message
         )
 
-        self.worker.deleteLater()
-        self.worker = None
+        if self.worker is not None:
+            self.worker.deleteLater()
+            self.worker = None
+
         self.thread = None
 
     def open_output_folder(self):
@@ -163,18 +274,21 @@ class MainWindow(QWidget):
         try:
 
             if platform.system() == "Darwin":
+
                 subprocess.run(
                     ["open", self.last_output_folder],
                     check=False
                 )
 
             elif platform.system() == "Windows":
+
                 subprocess.run(
                     ["explorer", self.last_output_folder],
                     check=False
                 )
 
             else:
+
                 subprocess.run(
                     ["xdg-open", self.last_output_folder],
                     check=False
@@ -186,4 +300,4 @@ class MainWindow(QWidget):
                 self,
                 "Unable to Open Folder",
                 str(e)
-            )        
+            )

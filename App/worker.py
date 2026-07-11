@@ -1,6 +1,6 @@
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 
-from core.processor import AudioProcessor
+from App.processor import AudioProcessor
 
 
 class Worker(QObject):
@@ -8,25 +8,29 @@ class Worker(QObject):
     finished = Signal(str, str)
     error = Signal(str)
 
-    def __init__(self, input_file, output_folder):
+    def __init__(self, audio_file, output_folder):
         super().__init__()
 
-        self.input_file = input_file
+        self.audio_file = audio_file
         self.output_folder = output_folder
 
+    @Slot()
     def run(self):
+
         try:
+
             processor = AudioProcessor()
 
             vocals, instrumental = processor.process(
-                self.input_file,
-                self.output_folder
+                self.audio_file,
+                self.output_folder,
             )
 
             self.finished.emit(
                 vocals,
-                instrumental
+                instrumental,
             )
 
         except Exception as e:
+
             self.error.emit(str(e))
