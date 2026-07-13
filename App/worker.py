@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal, Slot
 
-from App.processor import AudioProcessor
+from Engine.audio_engine import AudioEngine
 
 
 class Worker(QObject):
@@ -19,16 +19,16 @@ class Worker(QObject):
 
         try:
 
-            processor = AudioProcessor()
+            engine = AudioEngine()
 
-            vocals, instrumental = processor.process(
+            vocals, instrumental = engine.separate(
                 self.audio_file,
                 self.output_folder,
             )
 
             self.finished.emit(
-                vocals,
-                instrumental,
+                str(vocals),
+                str(instrumental),
             )
 
         except Exception as e:
